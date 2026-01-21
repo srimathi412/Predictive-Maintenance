@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Predictive Maintenance</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    input, button {
+      padding: 8px;
+      font-size: 16px;
+    }
+    button {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Predictive Maintenance – RUL Prediction</h2>
+
+  <label>Enter Engine ID:</label><br><br>
+  <input id="engine_id" placeholder="Example: 1"><br><br>
+
+  <button onclick="predict()">Predict</button>
+
+  <p id="result"></p>
+
+  <script>
+    function predict() {
+      const engineId = document.getElementById("engine_id").value;
+
+      fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ engine_id: engineId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          document.getElementById("result").innerText = data.error;
+        } else {
+          document.getElementById("result").innerText =
+            "Engine " + data.engine_id +
+            " → Remaining Useful Life: " +
+            data.predicted_RUL + " cycles";
+        }
+      })
+      .catch(() => {
+        document.getElementById("result").innerText =
+          "Error connecting to server";
+      });
+    }
+  </script>
+
+</body>
+</html>
