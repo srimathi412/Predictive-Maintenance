@@ -1,58 +1,352 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>Predictive Maintenance</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-    }
-    input, button {
-      padding: 8px;
-      font-size: 16px;
-    }
-    button {
-      cursor: pointer;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictive Maintenance AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --input-bg: rgba(15, 23, 42, 0.6);
+            --border-color: rgba(148, 163, 184, 0.2);
+            --text-color: #e2e8f0;
+            --text-muted: #94a3b8;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+            --glow: 0 0 20px rgba(59, 130, 246, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            outline: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: var(--shadow);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            margin-top: 30px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+            margin-left: 15px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        button {
+            width: 100%;
+            margin-top: 40px;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary-color), #2563eb);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Result Styles */
+        .result-card {
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 10px 0;
+            color: white;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Status Colors */
+        .healthy {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .degrading {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .critical {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            h2 {
+                font-size: 1.8rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-  <h2>Predictive Maintenance – RUL Prediction</h2>
+    <div class="container">
+        <header>
+            <h2>Predictive Maintenance</h2>
+            <p class="subtitle">Turbofan Engine RUL Estimator</p>
+        </header>
 
-  <label>Enter Engine ID:</label><br><br>
-  <input id="engine_id" placeholder="Example: 1"><br><br>
+        <form action="/predict" method="post">
 
-  <button onclick="predict()">Predict</button>
+            <div class="section-title">Operating Conditions</div>
+            <div class="form-grid">
+                <div class="input-group">
+                    <label>Flight Altitude</label>
+                    <input type="number" step="any" name="op_setting_1" placeholder="e.g. 35000" required>
+                </div>
+                <div class="input-group">
+                    <label>Flight Speed</label>
+                    <input type="number" step="any" name="op_setting_2" placeholder="e.g. 0.84" required>
+                </div>
+                <div class="input-group">
+                    <label>Engine Power</label>
+                    <input type="number" step="any" name="op_setting_3" placeholder="e.g. 100" required>
+                </div>
+            </div>
 
-  <p id="result"></p>
+            <div class="section-title">Sensor Metrics</div>
+            <div class="form-grid">
+                <div class="input-group">
+                    <label>LPC Inlet Temp</label>
+                    <input type="number" step="any" name="sensor_2" required>
+                </div>
+                <div class="input-group">
+                    <label>Compressor Outlet Temp</label>
+                    <input type="number" step="any" name="sensor_3" required>
+                </div>
+                <div class="input-group">
+                    <label>Turbine Outlet Temp</label>
+                    <input type="number" step="any" name="sensor_4" required>
+                </div>
+                <div class="input-group">
+                    <label>Compressor Outlet Press</label>
+                    <input type="number" step="any" name="sensor_7" required>
+                </div>
+                <div class="input-group">
+                    <label>Fan Speed</label>
+                    <input type="number" step="any" name="sensor_8" required>
+                </div>
+                <div class="input-group">
+                    <label>Core Speed</label>
+                    <input type="number" step="any" name="sensor_9" required>
+                </div>
+                <div class="input-group">
+                    <label>Comp. Static Press</label>
+                    <input type="number" step="any" name="sensor_11" required>
+                </div>
+                <div class="input-group">
+                    <label>Fuel Flow Ratio</label>
+                    <input type="number" step="any" name="sensor_12" required>
+                </div>
+                <div class="input-group">
+                    <label>Corrected Fan Speed</label>
+                    <input type="number" step="any" name="sensor_13" required>
+                </div>
+                <div class="input-group">
+                    <label>Corrected Core Speed</label>
+                    <input type="number" step="any" name="sensor_14" required>
+                </div>
+                <div class="input-group">
+                    <label>Bypass Ratio</label>
+                    <input type="number" step="any" name="sensor_15" required>
+                </div>
+                <div class="input-group">
+                    <label>Bleed Air Energy</label>
+                    <input type="number" step="any" name="sensor_17" required>
+                </div>
+                <div class="input-group">
+                    <label>HPT Cooling Flow</label>
+                    <input type="number" step="any" name="sensor_20" required>
+                </div>
+                <div class="input-group">
+                    <label>LPT Cooling Flow</label>
+                    <input type="number" step="any" name="sensor_21" required>
+                </div>
+            </div>
 
-  <script>
-    function predict() {
-      const engineId = document.getElementById("engine_id").value;
+            <button type="submit">Predict RUL</button>
+        </form>
 
-      fetch("/predict", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ engine_id: engineId })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          document.getElementById("result").innerText = data.error;
-        } else {
-          document.getElementById("result").innerText =
-            "Engine " + data.engine_id +
-            " → Remaining Useful Life: " +
-            data.predicted_RUL + " cycles";
-        }
-      })
-      .catch(() => {
-        document.getElementById("result").innerText =
-          "Error connecting to server";
-      });
-    }
-  </script>
+        {% if predicted_rul %}
+        <div class="result-card">
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">Estimated Remaining Useful Life
+            </p>
+            <div class="result-value">{{ predicted_rul }} <span style="font-size: 1rem; font-weight: 500;">cycles</span>
+            </div>
+            <div class="status-badge {{ status|lower }}">
+                Status: {{ status }}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
 
 </body>
+
 </html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Prognostics Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-yellow: #facc15;
+            --accent-red: #f87171;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 24px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .header-card {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 20px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .rul-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .rul-number {
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .rul-margin {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-top: 8px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            margin-top: 16px;
+        }
+
+        .status-healthy {
+            background: rgba(74, 222, 128, 0.2);
+            color: var(--accent-green);
+        }
+
+        .status-degrading {
+            background: rgba(250, 204, 21, 0.2);
+            color: var(--accent-yellow);
+        }
+
+        .status-critical {
+            background: rgba(248, 113, 113, 0.2);
+            color: var(--accent-red);
+            box-shadow: 0 0 15px rgba(248, 113, 113, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(248, 113, 113, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);
+            }
+        }
+
+        .recommendation-box {
+            background: rgba(56, 189, 248, 0.1);
+            border-left: 4px solid var(--accent-blue);
+            padding: 16px;
+            margin-top: 24px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: var(--text-primary);
+            color: var(--bg-color);
+            padding: 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            margin-top: 32px;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Chart adjustments to fit dark theme */
+        .js-plotly-plot .plotly .main-svg {
+            background: transparent !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+
+        <!-- Left Column: Metrics & Insights -->
+        <div class="card">
+            <h2>Live Diagnostics</h2>
+
+            <!-- RUL Section -->
+            <div class="rul-display"
+                style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; margin-bottom: 20px;">
+                <div
+                    style="color:var(--text-secondary); font-size:0.9rem; font-weight:700; text-transform:uppercase; letter-spacing: 1px; margin-bottom:5px;">
+                    Estimated Remaining Useful Life
+                </div>
+                <div class="rul-number">{{ data.rul }}</div>
+                <div class="rul-margin" style="font-size: 1.1rem; opacity: 0.8;">Cycles (&plusmn;{{ data.margin }})
+                </div>
+
+                <div class="status-badge status-{{ data.status|lower }}" style="margin-top: 15px;">
+                    {{ data.status_icon }} {{ data.status }}
+                </div>
+            </div>
+
+            <!-- Insights Table -->
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 12px 0; color:var(--text-secondary);">Confidence Score</td>
+                    <td style="padding: 12px 0; text-align: right; font-weight: 600;">{{ data.confidence }}%</td>
+                </tr>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 12px 0; color:var(--text-secondary);">Alert Trigger</td>
+                    <td style="padding: 12px 0; text-align: right; font-weight: 600; color: var(--accent-red);">{{
+                        data.alert_trigger }}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px 0; color:var(--text-secondary);">Primary Driver</td>
+                    <td style="padding: 12px 0; text-align: right; font-weight: 600;">{{ data.top_contributor }}</td>
+                </tr>
+            </table>
+
+            <!-- Recommendation -->
+            <div class="recommendation-box" style="margin-top: 25px;">
+                <strong style="color: var(--accent-blue);">Recommendation:</strong>
+                <p style="margin: 5px 0 0 0;">{{ data.recommendation }}</p>
+            </div>
+
+            <a href="/" class="btn">Analyze Another Engine</a>
+            <button onclick="generateAuditPDF()" class="btn"
+                style="margin-top:15px; background-color: #4338ca;">Download Prediction Audit</button>
+        </div>
+
+        <!-- Right Column: Visualization -->
+        <div class="card" style="display: flex; flex-direction: column; min-height: 600px;">
+            <div class="header-card" style="border:none; margin:0; padding:0;">
+                <h2>Sensor Trends & Variance</h2>
+            </div>
+
+            {% if data.no_plot %}
+            <div
+                style="height:450px; display:flex; align-items:center; justify-content:center; color:var(--text-secondary); text-align:center;">
+                <div>
+                    <h3 style="margin-bottom:10px;">Visualization Unavailable</h3>
+                    <p>Install 'plotly' to view interactive sensor trends.</p>
+                </div>
+            </div>
+            {% else %}
+            <div id="chart" style="width:100%; flex-grow: 1; min-height: 0;"></div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <script>
+        {% if not data.no_plot and data.plot_json %}
+        var graph = {{ data.plot_json | safe }};
+
+        // Force Dark Theme for Plotly
+        var layoutUpdate = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#94a3b8' },
+            xaxis: { gridcolor: '#334155' },
+            yaxis: { gridcolor: '#334155' }
+        };
+
+        Plotly.newPlot('chart', graph.data, graph.layout, { responsive: true }).then(function () {
+            Plotly.relayout('chart', layoutUpdate);
+        });
+        {% endif %}
+
+        const auditData = {{ data | tojson }};
+
+        async function generateAuditPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFontSize(22);
+            doc.setTextColor(40, 44, 52);
+            doc.text("Prediction Audit Report", 14, 20);
+
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text("Generated: " + auditData.timestamp, 14, 28);
+
+            // RESULT
+            doc.setFontSize(16);
+            doc.setTextColor(0, 56, 176); // Accent colorish
+            doc.text("Result Overview", 14, 40);
+
+            doc.setFontSize(12);
+            doc.setTextColor(0);
+            doc.text(`Estimated RUL: ${auditData.rul} Cycles`, 14, 50);
+            doc.text(`Margin of Error: ±${auditData.margin}`, 14, 56);
+            doc.text(`System Status: ${auditData.status}`, 14, 62);
+            doc.text(`Primary Driver: ${auditData.top_contributor}`, 14, 68);
+
+            // Input Table
+            doc.setFontSize(14);
+            doc.text("User Input Data Analysis", 14, 85);
+
+            const tableBody = auditData.input_summary.map(row => [row.label, row.value, row.normal]);
+
+            doc.autoTable({
+                startY: 90,
+                head: [['Sensor Component', 'Input Value', 'Normal Operating Limits']],
+                body: tableBody,
+                theme: 'grid',
+                headStyles: { fillColor: [15, 23, 42] }, // Dark blue
+                styles: { fontSize: 10 }
+            });
+
+            let finalY = doc.lastAutoTable.finalY + 15;
+
+            // Visuals
+            const chartDiv = document.getElementById('chart');
+            if (chartDiv && auditData.plot_json) {
+                doc.setFontSize(14);
+                doc.text("Sensor Trends Simulation", 14, finalY);
+                finalY += 5;
+
+                try {
+                    const imgData = await Plotly.toImage(chartDiv, { format: 'png', width: 800, height: 450 });
+                    // Scale image to fit page width (A4 is ~210mm wide)
+                    doc.addImage(imgData, 'PNG', 14, finalY, 180, 100);
+                    finalY += 105;
+                } catch (err) {
+                    console.error("Graph export error:", err);
+                    doc.text("(Graph visual unavailable)", 14, finalY + 10);
+                }
+            }
+
+            // Recommendation
+            doc.setFontSize(11);
+            doc.setTextColor(50);
+            doc.text("Recommendation:", 14, finalY + 10);
+            doc.setFont(undefined, 'normal'); // How to set bold in jspdf? normally using font type.
+            doc.text(auditData.recommendation, 14, finalY + 16, { maxWidth: 180 });
+
+            doc.save("prediction_audit.pdf");
+        }
+    </script>
+</body>
+
+</html>
