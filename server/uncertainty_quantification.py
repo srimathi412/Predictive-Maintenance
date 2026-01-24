@@ -46,3 +46,4 @@ def predict_with_uncertainty(f_model, X, n_iter=50):
     std_pred = float(preds.std())
     
     return mean_pred, std_pred
+
