@@ -40,3 +40,4 @@ def get_top_contributors(shap_values, feature_names, top_n=3):
     sorted_features = sorted(importance_dict.items(), key=lambda item: item[1], reverse=True)
     
     return sorted_features[:top_n]
+
