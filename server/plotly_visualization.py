@@ -99,3 +99,4 @@ def plot_predicted_rul_and_sensors(df, sensor_cols, unit_nr):
     return fig
 
 
+
