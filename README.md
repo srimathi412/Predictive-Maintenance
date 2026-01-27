@@ -10,9 +10,9 @@ This helps industries reduce maintenance cost, avoid unexpected breakdowns, and 
 NASA Turbofan Jet Engine Dataset (FD001)
 
 Dataset Files:
-- train_FD001.txt – Training data
-- test_FD001.txt – Test data
-- RUL_FD001.txt – Remaining Useful Life labels
+- train_FD002.txt – Training data
+- test_FD002.txt – Test data
+- RUL_FD002.txt – Remaining Useful Life labels
 
 ## Problem Statement
 Given historical sensor data of an engine, predict how many cycles remain before the engine fails.
@@ -96,7 +96,7 @@ Predictive_Maintenance/
 
 ##  How to Run the Project
 1. Clone the repository
-git clone https://github.com/srimathi412/Predictive_Maintenance.git
+git clone https://github.com/srimathi412/Predictive-Maintenance.git
 
 2. Install dependencies
 pip install pandas numpy scikit-learn matplotlib seaborn
@@ -114,6 +114,20 @@ They will be generated when the training notebook is executed.
 - Predicts Remaining Useful Life (RUL)
 - Helps plan maintenance schedules
 - Reduces unexpected failure
+
+## Predictive Maintenance Dashboard
+
+### Input Dashboard
+User interface for entering engine operating conditions and sensor metrics to generate RUL predictions.
+
+<img width="1566" height="909" alt="Predictive Maintenance Input Dashboard" src="https://github.com/user-attachments/assets/7f138cb0-5636-4e0e-b7f2-0a288e55298f" />
+
+<br>
+
+### RUL Prediction & Live Diagnostics
+Displays predicted Remaining Useful Life (RUL), degradation status, confidence score, primary sensor drivers, and interactive sensor trend analysis for decision support.
+
+<img width="1685" height="882" alt="RUL Prediction and Live Diagnostics" src="https://github.com/user-attachments/assets/119a6fe5-c506-43f8-a509-8d5b64fb9403" />
 
 
 
