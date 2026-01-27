@@ -27,7 +27,9 @@ def plot_predicted_rul_and_sensors(df, sensor_cols, unit_nr):
         y=df_last['predicted_rul'].tolist(),
         mode='lines+markers',
         name='Predicted RUL',
-        line=dict(color='red', width=3)
+        line=dict(color='red', width=3),
+        marker=dict(size=8, symbol='circle', color='red'),
+        yaxis='y'
     ))
 
     # Plot sensor trends (average of selected sensors)
