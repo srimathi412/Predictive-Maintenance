@@ -36,28 +36,26 @@ This is a regression problem where the target variable is Remaining Useful Life 
 - Seaborn
 
 ## 📂 Project Structure
-Predictive_Maintenance/
+Predictive_Maintenance
 │
-├── data/
+├── data
 │   ├── train_FD001.txt
 │   ├── test_FD001.txt
 │   └── RUL_FD001.txt
 │
-├── notebooks/
+├── notebooks
 │   ├── 01_data_and_RUL.ipynb
 │   ├── 02_preprocessing.ipynb
 │   └── 03_model_training.ipynb
 │
-├── server/
+├── server
 │   └── app.py
 │
-├── client/
-│   └── index.html
-│
-├── model/
+├── model
 │   └── (trained model files generated after training)
 │
 └── README.md
+
 
 ## ▶️ How to Run the Project
 1. Clone the repository
@@ -79,5 +77,6 @@ They will be generated when the training notebook is executed.
 - Predicts Remaining Useful Life (RUL)
 - Helps plan maintenance schedules
 - Reduces unexpected failu
+
 
 
