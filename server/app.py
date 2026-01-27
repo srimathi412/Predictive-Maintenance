@@ -44,6 +44,24 @@ scaler = None
 feature_cols = None
 test_df = None
 
+# Default Sensor Specs for Demo and Monitoring
+S_SPECS = {
+    'sensor_2':  (640, 642, 648),    # Inlet Temp
+    'sensor_3':  (1580, 1590, 1610), # Outlet Temp
+    'sensor_4':  (1400, 1410, 1430), # Turbine Temp
+    'sensor_7':  (550, 553, 558),    # Outlet Press
+    'sensor_8':  (2388, 2388, 2389), # Fan Speed
+    'sensor_9':  (9040, 9050, 9100), # Core Speed
+    'sensor_11': (47, 47.5, 48.5),   # Static Press
+    'sensor_12': (521, 522, 525),    # Fuel Flow
+    'sensor_13': (2388, 2388, 2389), # Corrected Fan
+    'sensor_14': (8120, 8135, 8160), # Corrected Core
+    'sensor_15': (8.4, 8.45, 8.6),   # Bypass Ratio
+    'sensor_17': (392, 393, 396),    # Bleed Air
+    'sensor_20': (38.8, 39.0, 39.4), # HPT Cooling
+    'sensor_21': (23.3, 23.4, 23.6), # LPT Cooling
+}
+
 def load_resources():
     global model, scaler, feature_cols, test_df
     
@@ -81,9 +99,19 @@ def load_resources():
 load_resources()
 
 def get_engine_status(rul):
-    if rul > 80: return "Healthy"
-    elif rul > 30: return "Degrading"
-    else: return "Critical"
+    """
+    Determines engine health status based on RUL value.
+    Thresholds aligned with bidirectional stress metric RUL ranges:
+    - Healthy: RUL > 100 (stress < 0 to ~0.3)
+    - Degrading: 40 < RUL ≤ 100 (stress ~0.3 to ~0.9)
+    - Critical: RUL ≤ 40 (stress > 0.9)
+    """
+    if rul > 100: 
+        return "Healthy"
+    elif rul > 40: 
+        return "Degrading"
+    else: 
+        return "Critical"
 
 @app.route("/", methods=["GET"])
 def index():
@@ -117,68 +145,107 @@ def predict():
         print(f"Running in DEMO MODE for Unit {unit_nr}")
         
         # 1. Generate Base Simulation History (99 steps)
-        np.random.seed(unit_nr)
+        # Use a combination of unit_nr and user input hash for seeds to ensure variety
+        seed_basis = unit_nr
+        if user_inputs:
+            # Simple hash of values to vary the "base" if they change inputs significantly
+            seed_basis += int(sum(user_inputs.values()) % 1000)
+            
+        np.random.seed(seed_basis)
         time_steps = np.arange(100)
-        
-        # Define ranges for "Normal" vs "High" for key sensors
-        # Sensor: (Normal_Min, Normal_Max, Critical_Max)
-        S_SPECS = {
-            'sensor_4':  (1100, 1300, 1500), # Turbine Temp
-            'sensor_11': (550, 600, 650),    # Static Press
-            'sensor_14': (140, 150, 165),    # Core Speed
-            'sensor_7':  (550, 600, 640),    # Compressor Press
-            'sensor_2':  (640, 645, 655),    # Inlet Temp
-        }
         
         unit_data = pd.DataFrame({'time_cycles': time_steps, 'unit_nr': unit_nr})
         
         # Fill baseline trends
         for s, (low, mid, high) in S_SPECS.items():
-            unit_data[s] = np.linspace(low, mid, 100) + np.random.normal(0, (mid-low)*0.05, 100)
+            # Trend slightly upwards/downwards depending on sensor
+            trend = np.linspace(low, mid, 100)
+            unit_data[s] = trend + np.random.normal(0, (mid-low)*0.1, 100)
         
         # 2. Apply ALL User Inputs to the LAST ROW
         last_idx = unit_data.index[-1]
         for col, val in user_inputs.items():
-            # If the column exists in our specs or DataFrame, update it
-            if col in S_SPECS:
+            if col in unit_data.columns:
                 unit_data.at[last_idx, col] = val
         
-        # 3. Calculate Dynamic RUL based on Stress Heuristic
-        # We calculate "Stress" score from 0 (Healthy) to 1.0 (Critical Failure)
+        # 3. Calculate Dynamic RUL based on Bidirectional Stress Heuristic
+        # Stress score: negative = healthier than normal, 0 = normal, positive = degrading/critical
         stress_scores = []
+        stress_dict = {}
         for s, (low, mid, high) in S_SPECS.items():
             current_val = unit_data.at[last_idx, s]
-            # Normalize: mid is "normal/degrading boundary", high is "critical"
-            # score = 0 at mid, score = 1 at high
-            s_stress = max(0, (current_val - mid) / (high - mid)) if high > mid else 0
+            
+            if current_val < mid:
+                # Healthy zone: negative stress (better than normal)
+                # At low: stress = -1.0, at mid: stress = 0
+                s_stress = (current_val - mid) / (mid - low) if mid > low else 0
+            else:
+                # Degrading/Critical zone: positive stress (worse than normal)
+                # At mid: stress = 0, at high: stress = 1.0
+                s_stress = (current_val - mid) / (high - mid) if high > mid else 0
+            
             stress_scores.append(s_stress)
+            stress_dict[s] = s_stress
         
-        total_stress = np.mean(stress_scores) if stress_scores else 0
-        total_stress = min(1.0, total_stress) # Cap at 1.0
-
-        # Map Stress to RUL
-        # total_stress=0   -> RUL=150 (Healthy)
-        # total_stress=0.5 -> RUL=50  (Degrading)
-        # total_stress=0.8 -> RUL=15  (Critical)
-        if total_stress < 0.2:
-            sim_rul = 150 - (total_stress * 150) # Mostly Healthy
-        elif total_stress < 0.7:
-            sim_rul = 80 - ((total_stress - 0.2) * 100) # Degrading
+        # Heuristic: Take the maximum absolute stress as a primary driver, but also consider the mean
+        # For safety, we prioritize the worst sensor (highest positive stress)
+        # But also consider average to get overall health picture
+        max_stress = max(stress_scores) if stress_scores else 0
+        min_stress = min(stress_scores) if stress_scores else 0
+        avg_stress = np.mean(stress_scores) if stress_scores else 0
+        
+        # Combined stress score (max stress has higher weight for safety)
+        # If max_stress is positive (degrading), it dominates
+        # If all negative (healthy), use average
+        if max_stress > 0.1:
+            total_stress = (max_stress * 0.7) + (avg_stress * 0.3)
         else:
-            sim_rul = 25 - ((total_stress - 0.7) * 50) # Critical
+            total_stress = avg_stress
+        
+        total_stress = max(-1.5, min(2.0, total_stress)) # Range: -1.5 (very healthy) to 2.0 (super critical)
 
-        sim_rul = max(0, int(sim_rul + np.random.normal(0, 3)))
+        # Map Stress to RUL (Bidirectional)
+        # total_stress=-1.5 -> RUL=300+ (Exceptionally Healthy)
+        # total_stress=-1.0 -> RUL=250  (Very Healthy)
+        # total_stress=-0.5 -> RUL=200  (Healthy)
+        # total_stress=0    -> RUL=150  (Normal)
+        # total_stress=0.5  -> RUL=80   (Early Degrading)
+        # total_stress=1.0  -> RUL=35   (Degrading/Warning)
+        # total_stress=1.5  -> RUL=10   (Critical)
+        # total_stress=2.0  -> RUL=1    (Imminent Failure)
+        
+        if total_stress < -1.0:
+            # Exceptionally healthy: -1.5 to -1.0 -> 300 to 250
+            sim_rul = 250 + ((total_stress + 1.0) * -100)
+        elif total_stress < -0.5:
+            # Very healthy: -1.0 to -0.5 -> 250 to 200
+            sim_rul = 200 + ((total_stress + 0.5) * -100)
+        elif total_stress < 0:
+            # Healthy: -0.5 to 0 -> 200 to 150
+            sim_rul = 150 + ((total_stress) * -100)
+        elif total_stress < 0.5:
+            # Normal to early degrading: 0 to 0.5 -> 150 to 80
+            sim_rul = 150 - (total_stress * 140)
+        elif total_stress < 1.0:
+            # Degrading: 0.5 to 1.0 -> 80 to 35
+            sim_rul = 80 - ((total_stress - 0.5) * 90)
+        elif total_stress < 1.5:
+            # Critical: 1.0 to 1.5 -> 35 to 10
+            sim_rul = 35 - ((total_stress - 1.0) * 50)
+        else:
+            # Imminent failure: 1.5 to 2.0 -> 10 to 1
+            sim_rul = 10 - ((total_stress - 1.5) * 18)
+
+        sim_rul = max(1, int(sim_rul + np.random.normal(0, 2)))
         mean_rul = float(sim_rul)
-        std_rul = float(1.2 + (150 - mean_rul) * 0.01) # Reduced uncertainty for high confidence scores
+        std_rul = float(1.0 + total_stress * 5.0) # Uncertainty increases with stress
 
         # 4. Determine Top Contributor for Demo
-        # Find sensor with highest normalized stress
-        stress_dict = {s: max(0, (unit_data.at[last_idx, s] - mid) / (high - mid)) 
-                       for s, (low, mid, high) in S_SPECS.items()}
         top_s = max(stress_dict, key=stress_dict.get)
-        top_contributor_str = f"{top_s} ({stress_dict[top_s]:.4f})"
+        top_contributor_str = f"{top_s} (Stress: {stress_dict[top_s]:.2f})"
         
         # Add synthetic predicted RUL column for plot
+        # Create a trend that leads to current predicted RUL
         unit_data['predicted_rul'] = np.linspace(mean_rul + 100, mean_rul, 100)
 
     # REAL MODE: If system is ready
@@ -250,13 +317,13 @@ def predict():
 
     # 5. response & Insights
     
-    # Generate tailored recommendation
-    if mean_rul > 80:
+    # Generate tailored recommendation (aligned with new status thresholds)
+    if mean_rul > 100:
         rec_text = "System Healthy. Continue standard monitoring schedule."
         alert_text = "None. All sensors within nominal range."
         status_icon = "🟢"
-    elif mean_rul > 30:
-        rec_text = "Schedule maintenance within next 20 cycles."
+    elif mean_rul > 40:
+        rec_text = "Schedule maintenance within next 20-40 cycles. Monitor sensor trends closely."
         alert_text = f"Degradation detected in {top_contributor_str.split('(')[0]}."
         status_icon = "🟡"
     else:
@@ -280,9 +347,9 @@ def predict():
         
         # Data for PDF Audit
         "input_summary": [
-            {'sensor': 'sensor_4', 'label': 'Turbine Temp', 'value': f"{unit_data.iloc[-1].get('sensor_4', 0):.2f}", 'normal': '1100 - 1450'},
-            {'sensor': 'sensor_11', 'label': 'High Pressure', 'value': f"{unit_data.iloc[-1].get('sensor_11', 0):.2f}", 'normal': '550 - 650'},
-             {'sensor': 'sensor_14', 'label': 'Coolant Flow', 'value': f"{unit_data.iloc[-1].get('sensor_14', 0):.2f}", 'normal': '120 - 160'}
+            {'sensor': 'sensor_4', 'label': 'Turbine Temp', 'value': f"{unit_data.iloc[-1].get('sensor_4', 0):.2f}", 'normal': f"{S_SPECS['sensor_4'][0]} - {S_SPECS['sensor_4'][1]}"},
+            {'sensor': 'sensor_11', 'label': 'Comp. Static Press', 'value': f"{unit_data.iloc[-1].get('sensor_11', 0):.2f}", 'normal': f"{S_SPECS['sensor_11'][0]} - {S_SPECS['sensor_11'][1]}"},
+            {'sensor': 'sensor_14', 'label': 'Corrected Core Speed', 'value': f"{unit_data.iloc[-1].get('sensor_14', 0):.2f}", 'normal': f"{S_SPECS['sensor_14'][0]} - {S_SPECS['sensor_14'][1]}"}
         ],
         "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -294,5 +361,3 @@ def predict():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
