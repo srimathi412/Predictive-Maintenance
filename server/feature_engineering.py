@@ -52,4 +52,3 @@ def create_lstm_sequences(X, y=None, time_steps=20):
         return np.array(Xs), np.array(ys)
     else:
         return np.array(Xs)
-
