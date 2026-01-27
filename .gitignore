@@ -1,0 +1,22 @@
+# Ignore trained ML models
+models/
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.onnx
+
+# Debug and temporary files
+debug_*.html
+debug_*.txt
+verification_*.txt
+*_result.html
+*_results.txt
+server_log.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+
