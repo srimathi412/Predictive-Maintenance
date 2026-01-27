@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, LSTM, Dense, Dropout
 
+
 def build_stacked_lstm(input_shape, dropout_rate=0.3):
     inputs = Input(shape=input_shape)
 
@@ -13,16 +14,13 @@ def build_stacked_lstm(input_shape, dropout_rate=0.3):
     x = LSTM(64)(x)
     x = Dropout(dropout_rate)(x)
 
-    
+    # Dense layers
     x = Dense(32, activation='relu')(x)
     x = Dropout(dropout_rate)(x)
 
-   
+    # Output layer for regression
     outputs = Dense(1)(x)
 
     model = Model(inputs, outputs)
     model.compile(optimizer='adam', loss='mse')
     return model
-
-
-
