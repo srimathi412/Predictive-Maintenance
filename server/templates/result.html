@@ -271,113 +271,125 @@
             </div>
             {% else %}
             <div id="chart" style="width:100%; flex-grow: 1; min-height: 0;"></div>
+            <!-- Data for the Plotly chart -->
+            <script id="plot-data"
+                type="application/json">{{ data.plot_json | safe if data.plot_json else '{}' }}</script>
             {% endif %}
+
+            <!-- Data for the Audit PDF -->
+            <script id="audit-data" type="application/json">{{ data | tojson }}</script>
         </div>
 
     </div>
 
     <script>
-        {% if not data.no_plot and data.plot_json %}
-        var graph = {{ data.plot_json | safe }};
-
-        // Light Theme for Plotly - matching warm color scheme
-        var layoutUpdate = {
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: '#fefefe',
-            font: { color: '#718096', family: 'Inter' },
-            xaxis: {
-                gridcolor: '#e8d5c4',
-                linecolor: '#e8d5c4',
-                tickfont: { color: '#718096' }
-            },
-            yaxis: {
-                gridcolor: '#e8d5c4',
-                linecolor: '#e8d5c4',
-                tickfont: { color: '#718096' }
-            },
-            yaxis2: {
-                gridcolor: '#e8d5c4',
-                linecolor: '#e8d5c4',
-                tickfont: { color: '#718096' }
-            }
-        };
-
-        Plotly.newPlot('chart', graph.data, graph.layout, { responsive: true }).then(function () {
-            Plotly.relayout('chart', layoutUpdate);
-        });
-        {% endif %}
-
-        const auditData = {{ data | tojson }};
-
-        async function generateAuditPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // Header
-            doc.setFontSize(22);
-            doc.setTextColor(40, 44, 52);
-            doc.text("Prediction Audit Report", 14, 20);
-
-            doc.setFontSize(10);
-            doc.setTextColor(100);
-            doc.text("Generated: " + auditData.timestamp, 14, 28);
-
-            // RESULT
-            doc.setFontSize(16);
-            doc.setTextColor(0, 56, 176); // Accent colorish
-            doc.text("Result Overview", 14, 40);
-
-            doc.setFontSize(12);
-            doc.setTextColor(0);
-            doc.text(`Estimated RUL: ${auditData.rul} Cycles`, 14, 50);
-            doc.text(`Margin of Error: ±${auditData.margin}`, 14, 56);
-            doc.text(`System Status: ${auditData.status}`, 14, 62);
-            doc.text(`Primary Driver: ${auditData.top_contributor}`, 14, 68);
-
-            // Input Table
-            doc.setFontSize(14);
-            doc.text("User Input Data Analysis", 14, 85);
-
-            const tableBody = auditData.input_summary.map(row => [row.label, row.value, row.normal]);
-
-            doc.autoTable({
-                startY: 90,
-                head: [['Sensor Component', 'Input Value', 'Normal Operating Limits']],
-                body: tableBody,
-                theme: 'grid',
-                headStyles: { fillColor: [15, 23, 42] }, // Dark blue
-                styles: { fontSize: 10 }
-            });
-
-            let finalY = doc.lastAutoTable.finalY + 15;
-
-            // Visuals
-            const chartDiv = document.getElementById('chart');
-            if (chartDiv && auditData.plot_json) {
-                doc.setFontSize(14);
-                doc.text("Sensor Trends Simulation", 14, finalY);
-                finalY += 5;
-
+        (function () {
+            const plotDataEl = document.getElementById('plot-data');
+            if (plotDataEl) {
                 try {
-                    const imgData = await Plotly.toImage(chartDiv, { format: 'png', width: 800, height: 450 });
-                    // Scale image to fit page width (A4 is ~210mm wide)
-                    doc.addImage(imgData, 'PNG', 14, finalY, 180, 100);
-                    finalY += 105;
-                } catch (err) {
-                    console.error("Graph export error:", err);
-                    doc.text("(Graph visual unavailable)", 14, finalY + 10);
+                    const graph = JSON.parse(plotDataEl.textContent);
+                    if (graph && graph.data && graph.layout) {
+                        // Light Theme for Plotly - matching warm color scheme
+                        const layoutUpdate = {
+                            paper_bgcolor: 'rgba(0,0,0,0)',
+                            plot_bgcolor: '#fefefe',
+                            font: { color: '#718096', family: 'Inter' },
+                            'xaxis.gridcolor': '#e8d5c4',
+                            'xaxis.linecolor': '#e8d5c4',
+                            'xaxis.tickfont.color': '#718096',
+                            'yaxis.gridcolor': '#e8d5c4',
+                            'yaxis.linecolor': '#e8d5c4',
+                            'yaxis.tickfont.color': 'red',
+                            'yaxis2.gridcolor': '#e8d5c4',
+                            'yaxis2.linecolor': '#e8d5c4',
+                            'yaxis2.tickfont.color': 'rgb(148, 163, 184)',
+                            'legend.font.color': '#2d3748',
+                            'legend.bgcolor': 'rgba(255,255,255,0.8)'
+                        };
+
+                        Plotly.newPlot('chart', graph.data, graph.layout, { responsive: true }).then(function () {
+                            Plotly.relayout('chart', layoutUpdate);
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error parsing plot data:", e);
                 }
             }
 
-            // Recommendation
-            doc.setFontSize(11);
-            doc.setTextColor(50);
-            doc.text("Recommendation:", 14, finalY + 10);
-            doc.setFont(undefined, 'normal'); // How to set bold in jspdf? normally using font type.
-            doc.text(auditData.recommendation, 14, finalY + 16, { maxWidth: 180 });
+            const auditDataEl = document.getElementById('audit-data');
+            const auditData = auditDataEl ? JSON.parse(auditDataEl.textContent) : null;
 
-            doc.save("prediction_audit.pdf");
-        }
+            async function generateAuditPDF() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                // Header
+                doc.setFontSize(22);
+                doc.setTextColor(40, 44, 52);
+                doc.text("Prediction Audit Report", 14, 20);
+
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                doc.text("Generated: " + auditData.timestamp, 14, 28);
+
+                // RESULT
+                doc.setFontSize(16);
+                doc.setTextColor(0, 56, 176); // Accent colorish
+                doc.text("Result Overview", 14, 40);
+
+                doc.setFontSize(12);
+                doc.setTextColor(0);
+                doc.text(`Estimated RUL: ${auditData.rul} Cycles`, 14, 50);
+                doc.text(`Margin of Error: ±${auditData.margin}`, 14, 56);
+                doc.text(`System Status: ${auditData.status}`, 14, 62);
+                doc.text(`Primary Driver: ${auditData.top_contributor}`, 14, 68);
+
+                // Input Table
+                doc.setFontSize(14);
+                doc.text("User Input Data Analysis", 14, 85);
+
+                const tableBody = auditData.input_summary.map(row => [row.label, row.value, row.normal]);
+
+                doc.autoTable({
+                    startY: 90,
+                    head: [['Sensor Component', 'Input Value', 'Normal Operating Limits']],
+                    body: tableBody,
+                    theme: 'grid',
+                    headStyles: { fillColor: [15, 23, 42] }, // Dark blue
+                    styles: { fontSize: 10 }
+                });
+
+                let finalY = doc.lastAutoTable.finalY + 15;
+
+                // Visuals
+                const chartDiv = document.getElementById('chart');
+                if (chartDiv && auditData.plot_json) {
+                    doc.setFontSize(14);
+                    doc.text("Sensor Trends Simulation", 14, finalY);
+                    finalY += 5;
+
+                    try {
+                        const imgData = await Plotly.toImage(chartDiv, { format: 'png', width: 800, height: 450 });
+                        // Scale image to fit page width (A4 is ~210mm wide)
+                        doc.addImage(imgData, 'PNG', 14, finalY, 180, 100);
+                        finalY += 105;
+                    } catch (err) {
+                        console.error("Graph export error:", err);
+                        doc.text("(Graph visual unavailable)", 14, finalY + 10);
+                    }
+                }
+
+                // Recommendation
+                doc.setFontSize(11);
+                doc.setTextColor(50);
+                doc.text("Recommendation:", 14, finalY + 10);
+                doc.setFont(undefined, 'normal'); // How to set bold in jspdf? normally using font type.
+                doc.text(auditData.recommendation, 14, finalY + 16, { maxWidth: 180 });
+
+                doc.save("prediction_audit.pdf");
+            }
+            window.generateAuditPDF = generateAuditPDF;
+        })();
     </script>
 </body>
 
